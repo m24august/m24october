@@ -3371,6 +3371,9 @@ setupLogin();
     function P(a,b){return b?((a/b)*100).toFixed(2)+'%':'0.00%';}
     function pdt(s){if(!s)return 0;s=''+s;var p=s.split('/');if(p.length===3)return (+p[2])*10000+(+p[1])*100+(+p[0]);var d=s.split('-');if(d.length===3)return (+d[0])*10000+(+d[1])*100+(+d[2]);return 0;}
     function dcount(x){try{return dailyCounted(x);}catch(e){return (x.pd>0);}}
+    function _thmo(s){for(var m=1;m<=12;m++){if(monTH[m]===s)return m;}return 0;}
+    /* หาวันจ่าย "ครั้งแรกที่ครบงวด" ในรอบนี้ จากประวัติ log — กันเคสที่ผ่อนควบ/ปิดบัญชีทีหลังมาทับวันชำระเดิม */
+    function logPd(x,perYM){var L=x.log||[],best=0;for(var k=0;k<L.length;k++){var e=L[k];if(!e)continue;var r=String(e.r||''),t=String(e.t||'');var full=(t==='รับชำระ'&&/ครบงวด|ผ่อนควบ|รับพร้อม/.test(r))||(t==='ปิดบัญชี'&&/ปิดบัญชี|ปิดยอด|รับยอดปิด/.test(r));if(!full)continue;var mt=r.match(/(\d{1,2})\s+([ก-๙.]+)\s+(\d{4})/);if(!mt)continue;var dd=+mt[1],mm=_thmo(mt[2]),yy=(+mt[3])-543;if(!mm)continue;var num=yy*10000+mm*100+dd;if(Math.floor(num/100)!==perYM)continue;if(!best||num<best)best=num;}return best;}
     function brName(c){var b=DATA.filter(function(x){return x.code===c;})[0];return b?b.name:c;}
     function period(){var pr=(typeof SYNC!=='undefined'&&SYNC.period)||'2569-10';var pp=pr.split('-');var by=parseInt(pp[0])||2569,mon=parseInt(pp[1])||9,ce=by-543;var ld=new Date(ce,mon,0).getDate();return{by:by,mon:mon,ce:ce,ld:ld};}
     function scope(){
@@ -3391,9 +3394,10 @@ setupLogin();
       var flat=[];
       recs.forEach(function(x){
         var dn=pdt(x.du),dday=dn?dn%100:1;if(dday<1)dday=1;if(dday>pe.ld)dday=pe.ld;
-        var deadline=Math.min(dday+3,pe.ld),pd=pdt(x.pdate),dueYM=dn?Math.floor(dn/100):0,payYM=pd?Math.floor(pd/100):0,paidNow=(payYM===perYM),st;
+        var deadline=Math.min(dday+3,pe.ld),_lpd=logPd(x,perYM),pd=_lpd||pdt(x.pdate),dueYM=dn?Math.floor(dn/100):0,payYM=pd?Math.floor(pd/100):0,paidNow=(payYM===perYM),st;
         if(!dcount(x))st='owed';else if(dueYM>perYM)st='done';else if(paidNow)st=((pd%100)<=deadline)?'done':'late';else st='done';
-        var o={x:x,status:st,d:dday};days[dday].goal++;days[dday].list.push(o);flat.push(o);
+        var _ps=_lpd?(_z2(_lpd%100)+'/'+_z2(Math.floor(_lpd/100)%100)+'/'+Math.floor(_lpd/10000)):'';
+        var o={x:x,status:st,d:dday,pdShow:_ps};days[dday].goal++;days[dday].list.push(o);flat.push(o);
         if(st==='done')days[dday].on++;else if(st==='late')days[dday].late++;else days[dday].owed++;
       });
       return{sc:sc,pe:pe,recs:recs,days:days,flat:flat};
@@ -3475,7 +3479,7 @@ setupLogin();
     }
 
     function pill(st){if(st==='done')return '<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;background:#e4f6ec;color:#1a8a4e">ชำระตรงดิว</span>';if(st==='late')return '<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;background:#efe7fb;color:#7c3aed">ชำระหลังดิว</span>';return '<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;background:#fde3e1;color:#d8382a">ค้าง</span>';}
-    function prow(o,i){var x=o.x;return '<tr style="border-bottom:1px solid #eef0f5"><td style="'+TDS+';text-align:center;color:#8790a8">'+(i+1)+'</td><td style="'+TDS+';font-weight:700">'+(x.n||'-')+'</td><td style="'+TDS+'">'+(x.tel||'-')+'</td><td style="'+TDS+'">'+(x.cno||'-')+'</td><td style="'+TDS+';text-align:center">'+(x.pn||'-')+'</td><td style="'+TDS+';text-align:center">'+(x.du||'-')+'</td><td style="'+TDS+';text-align:center;color:#15803d;font-weight:600">'+(x.pdate||'—')+'</td><td style="'+TDS+';text-align:right;font-weight:700">'+money(x.f)+'</td><td style="'+TDS+'">'+pill(o.status)+'</td></tr>';}
+    function prow(o,i){var x=o.x;return '<tr style="border-bottom:1px solid #eef0f5"><td style="'+TDS+';text-align:center;color:#8790a8">'+(i+1)+'</td><td style="'+TDS+';font-weight:700">'+(x.n||'-')+'</td><td style="'+TDS+'">'+(x.tel||'-')+'</td><td style="'+TDS+'">'+(x.cno||'-')+'</td><td style="'+TDS+';text-align:center">'+(x.pn||'-')+'</td><td style="'+TDS+';text-align:center">'+(x.du||'-')+'</td><td style="'+TDS+';text-align:center;color:#15803d;font-weight:600">'+(o.pdShow||x.pdate||'—')+'</td><td style="'+TDS+';text-align:right;font-weight:700">'+money(x.f)+'</td><td style="'+TDS+'">'+pill(o.status)+'</td></tr>';}
     function imgTable(arr,color){if(!arr.length)return '<div style="text-align:center;color:#9aa0b5;font-size:12px;padding:14px">— ไม่มีรายการ —</div>';
       return '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><tr style="background:'+color+';color:#fff"><th style="'+THS+'">#</th><th style="'+THS+'">ชื่อลูกค้า</th><th style="'+THS+'">เบอร์โทร</th><th style="'+THS+'">เลขสัญญา</th><th style="'+THS+';text-align:center">งวด</th><th style="'+THS+';text-align:center">วันดิว</th><th style="'+THS+';text-align:center">วันรับชำระ</th><th style="'+THS+';text-align:right">ค่างวด</th><th style="'+THS+'">สถานะ</th></tr>'+arr.map(prow).join('')+'</table>';}
     function mh(color,title,sub){return '<div style="background:'+color+';color:#fff;padding:12px 18px;display:flex;align-items:center;gap:10px"><div><div style="font-size:15px;font-weight:800">'+title+'</div>'+(sub?'<div style="font-size:10.5px;opacity:.9;margin-top:2px">'+sub+'</div>':'')+'</div><div onclick="dkClose()" style="margin-left:auto;font-size:20px;cursor:pointer">✕</div></div>';}
