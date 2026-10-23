@@ -3743,14 +3743,15 @@ setupLogin();
   var B={};
   CUST.forEach(function(x){
    if(String(x.amType)!=='1'||!al[x.s])return;
-   if(!B[x.s]){var d=DATA.find(function(z){return z.code===x.s;})||{};B[x.s]={code:x.s,name:d.name||x.s,zone:d.zone||0,type:(d.type||'used'),tot:0,s0:0,s1:0,s2:0,l0:0,l1:0,l2:0,l3:0,closed:0,m:{0:[],1:[],2:[],3:[]}};}
-   var o=B[x.s],sb=sbuck(x);o.tot++;o['s'+sb]++;
-   var lb=lbuck(x);if(lb<0){o.closed++;}else{var k=Math.min(3,lb);o['l'+k]++;o.m[k].push(x);}
+   if(!B[x.s]){var d=DATA.find(function(z){return z.code===x.s;})||{};B[x.s]={code:x.s,name:d.name||x.s,zone:d.zone||0,type:(d.type||'used'),tot:0,s0:0,s1:0,s2:0,l0:0,l1:0,l2:0,l3:0,closed:0,m:{0:[],1:[],2:[],3:[]},cm:{0:[],1:[],2:[],3:[]},sm:{0:[],1:[],2:[]}};}
+   var o=B[x.s],sb=sbuck(x);o.tot++;o['s'+sb]++;o.sm[sb].push(x);
+   var lb=lbuck(x);if(lb<0){o.closed++;o['l'+sb]++;o.cm[sb].push(x);}else{var k=Math.min(3,lb);o['l'+k]++;o.m[k].push(x);}
   });
   ROWS=Object.keys(B).map(function(k){return B[k];}).sort(function(a,b){return a.code<b.code?-1:1;});
  }
  function agg(a){return a.reduce(function(o,r){return {tot:o.tot+r.tot,s0:o.s0+r.s0,s1:o.s1+r.s1,s2:o.s2+r.s2,l0:o.l0+r.l0,l1:o.l1+r.l1,l2:o.l2+r.l2,l3:o.l3+r.l3,closed:o.closed+r.closed};},{tot:0,s0:0,s1:0,s2:0,l0:0,l1:0,l2:0,l3:0,closed:0});}
  function nb(n,tot,c){return '<div style="font-family:Prompt,sans-serif;font-weight:800;font-size:13px;color:'+c+';line-height:1.1;white-space:nowrap">'+n+'</div><div style="font-size:9px;color:#9aa0b5">'+P(n,tot)+'%</div>';}
+ function clkS(n,tot,c,code,sb,cls){return '<td class="fb-click'+(cls?' '+cls:'')+'" onclick="__fbDrill(\''+code+'\',\'s'+sb+'\')"><div style="font-family:Prompt,sans-serif;font-weight:800;font-size:13px;color:'+c+';line-height:1.1;white-space:nowrap;text-decoration:underline dotted '+c+'">'+n+'</div><div style="font-size:9px;color:#9aa0b5">'+P(n,tot)+'%</div></td>';}
  function clk(n,tot,s,c,code,bkt){var d=n-s,dc=d>0?'#15803d':d<0?'#c0392b':'#9aa0b5',tx=d===0?'=':(d>0?'▲+'+d:'▼'+(-d));
   return '<td class="fb-click'+(bkt===0?' fb-mid':'')+'" onclick="__fbDrill(\''+code+'\','+bkt+')"><div style="font-family:Prompt,sans-serif;font-weight:800;font-size:13px;color:'+c+';line-height:1.1;white-space:nowrap;text-decoration:underline dotted '+c+'">'+n+' <span style="font-size:9px;color:'+dc+';font-weight:700">'+tx+'</span></div><div style="font-size:9px;color:#9aa0b5">'+P(n,tot)+'%</div></td>';}
  function p0(r){var a=+P(r.s0,r.tot),b=+P(r.l0,r.tot),d=b-a,up=d>=0,dc=up?'#15803d':'#c0392b';
@@ -3761,7 +3762,7 @@ setupLogin();
   +'<tr><th class="fb-sep">0 ง.</th><th>1 ง.</th><th>2 ง.</th><th class="fb-mid">0 ง.</th><th>1 ง.</th><th>2 ง.</th><th>🔴3 ง.</th></tr>';}
  var COLG='<colgroup><col style="width:17%"><col style="width:6%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:8%"><col style="width:15%"></colgroup>';
  function trow(r){return '<tr><td class="l"><b style="color:#222;font-size:11.5px">'+r.name+'</b></td><td style="color:#555;font-weight:600">'+r.tot+'</td>'
-  +'<td class="fb-sep">'+nb(r.s0,r.tot,'#15803d')+'</td><td>'+nb(r.s1,r.tot,'#d97706')+'</td><td>'+nb(r.s2,r.tot,'#c0392b')+'</td>'
+  +clkS(r.s0,r.tot,'#15803d',r.code,0,'fb-sep')+clkS(r.s1,r.tot,'#d97706',r.code,1,'')+clkS(r.s2,r.tot,'#c0392b',r.code,2,'')
   +clk(r.l0,r.tot,r.s0,'#15803d',r.code,0)+clk(r.l1,r.tot,r.s1,'#d97706',r.code,1)+clk(r.l2,r.tot,r.s2,'#c0392b',r.code,2)
   +'<td class="fb-click" style="background:#fff0ef" onclick="__fbDrill(\''+r.code+'\',3)"><div style="font-family:Prompt,sans-serif;font-weight:800;color:#b91c1c;text-decoration:underline dotted #b91c1c">'+r.l3+'</div><div style="font-size:9px;color:#9aa0b5">'+P(r.l3,r.tot)+'%</div></td>'
   +p0(r)+'</tr>';}
@@ -3812,22 +3813,29 @@ setupLogin();
  var FNx={0:['🔴','#c0392b','#fdeceb','ไหลลงมาจากงวดอื่น (ต้องเร่ง!)','เดิมงวดน้อยกว่า ค้างผ่อนเลยไหลลงมา'],1:['⚪','#55607a','#f1f3f8','ยังไม่จ่าย ยังอยู่งวดเดิม','ยังไม่ถึงดิว'],2:['🟢','#b45309','#fff4e2','จ่ายแล้วขยับขึ้น (ยังไม่ถึง 0)','จ่ายแล้วดีขึ้น แต่ยังมีงวดค้าง']};
  function esc(s){return String(s==null?'':s).replace(/[<>&]/g,function(c){return ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c];});}
  function fmtf(v){try{return fmt(v||0);}catch(e){return (v||0).toLocaleString();}}
+ function stLabel(x){var tg=(x.statusTag||x.closeType||'')+'';if(/ยึด/.test(tg))return ['ยึดรถ','#c0392b'];if(/คืน/.test(tg))return ['คืนรถ','#b45309'];if(/ปิด/.test(tg))return ['ปิดบัญชี','#15803d'];if(coll(x))return ['จ่ายแล้วเดือนนี้','#15803d'];if(x.pdate)return ['จ่ายล่วงหน้า','#7c3aed'];return ['ยังไม่จ่าย','#8a6d1e'];}
  function detTab(arr){if(!arr.length)return '<div style="padding:9px 14px;color:#9aa0b5;font-size:11.5px">— ไม่มีรายการ —</div>';
-  var h='<table class="fbgt"><tr><th>ชื่อลูกค้า</th><th>เลขสัญญา</th><th>เบอร์โทร</th><th style="text-align:right">ค่างวด</th><th style="text-align:center">วันดิว</th></tr>';
-  arr.slice(0,200).forEach(function(x){h+='<tr><td style="font-weight:700">'+esc(x.n)+'</td><td>'+esc(x.cno)+'</td><td>'+esc(x.tel)+'</td><td style="text-align:right">'+fmtf(x.f)+'</td><td style="text-align:center">'+esc(x.du)+'</td></tr>';});
+  var h='<table class="fbgt"><tr><th>#</th><th>ชื่อลูกค้า</th><th>เบอร์โทร</th><th>เลขสัญญา</th><th style="text-align:center">งวด</th><th style="text-align:center">วันดิว</th><th style="text-align:center">วันรับชำระ</th><th style="text-align:right">ค่างวด</th><th>สถานะ</th></tr>';
+  arr.slice(0,200).forEach(function(x,i){var sl=stLabel(x);h+='<tr><td style="color:#8a90a6">'+(i+1)+'</td><td style="font-weight:700">'+esc(x.n)+'</td><td>'+esc(x.tel)+'</td><td>'+esc(x.cno)+'</td><td style="text-align:center">'+esc(x.pn||'')+'</td><td style="text-align:center">'+esc(x.du)+'</td><td style="text-align:center;color:'+(x.pdate?'#15803d':'#9aa0b5')+'">'+(esc(x.pdate)||'—')+'</td><td style="text-align:right">'+fmtf(x.f)+'</td><td><span style="font-size:10px;font-weight:700;color:'+sl[1]+'">'+sl[0]+'</span></td></tr>';});
   h+='</table>'+(arr.length>200?'<div style="font-size:10.5px;color:#9aa0b5;padding:6px 14px;text-align:center">… แสดง 200 จาก '+arr.length+' ราย</div>':'');return h;}
  function gBlock(meta,arr){return '<div class="fbgrp"><div class="fbgh" style="background:'+meta[2]+';color:'+meta[1]+'">'+meta[0]+' <div><div>'+meta[3]+'</div><div style="font-size:10px;font-weight:400;opacity:.85">'+meta[4]+'</div></div><span class="c" style="color:'+meta[1]+'">'+arr.length+' ราย</span></div>'+detTab(arr)+'</div>';}
  window.__fbDrill=function(code,bkt){
   var r=ROWS.find(function(x){return x.code===code;});if(!r)return;
-  var mem=r.m[bkt]||[],g0=[],g1=[],g2=[];
-  mem.forEach(function(x){var sb=Math.min(3,x.b||0);
-   if(bkt===0){ if(sb>0)g0.push(x); else if(coll(x))g1.push(x); else g2.push(x); }
-   else { if(sb<bkt)g0.push(x); else if(sb>bkt)g2.push(x); else g1.push(x); }
-  });
-  var lbl=bkt===3?'3 งวด (หลุดเกณฑ์)':bkt+' งวด',md=document.getElementById('fbMd');
-  var FG=(bkt===0)?FN:FNx;
-  var inner='<div class="fbmh"><div><div class="t">'+r.name+' · ถัง '+lbl+' (ปัจจุบัน)</div><div class="s">รวม '+mem.length+' ราย · แยก 3 กลุ่มตามที่มา</div></div><div class="x" onclick="document.getElementById(\'fbOv\').style.display=\'none\'">✕</div></div>';
-  inner+=gBlock(FG[0],g0)+gBlock(FG[1],g1)+gBlock(FG[2],g2);
+  var md=document.getElementById('fbMd'),inner,FNc=['✅','#0f766e','#e6f6f4','ปิดบัญชี / ยึด / คืนรถ (จบงาน = ทำได้)','รายการในถังนี้ที่ปิด/ยึด/คืนไปแล้ว'];
+  if(typeof bkt==='string'&&bkt.charAt(0)==='s'){
+   var sn=+bkt.slice(1),arr=r.sm[sn]||[];
+   inner='<div class="fbmh"><div><div class="t">'+r.name+' · ตั้งต้น '+sn+' งวด (ณ 1 ต.ค.)</div><div class="s">รวม '+arr.length+' ราย · สถานะงวดค้างตอนเพิ่มงาน 1 ต.ค.</div></div><div class="x" onclick="document.getElementById(\'fbOv\').style.display=\'none\'">✕</div></div>';
+   inner+=gBlock(['📦','#157a52','#e8f7ef','รายชื่อ ณ ตั้งต้น '+sn+' งวด','สถานะตอนเพิ่มงานเข้าระบบ 1 ต.ค.'],arr);
+  }else{
+   var mem=r.m[bkt]||[],cl=r.cm[bkt]||[],g0=[],g1=[],g2=[];
+   mem.forEach(function(x){var sb=Math.min(3,x.b||0);
+    if(bkt===0){ if(sb>0)g0.push(x); else if(coll(x))g1.push(x); else g2.push(x); }
+    else { if(sb<bkt)g0.push(x); else if(sb>bkt)g2.push(x); else g1.push(x); }
+   });
+   var lbl=bkt===3?'3 งวด (หลุดเกณฑ์)':bkt+' งวด',FG=(bkt===0)?FN:FNx;
+   inner='<div class="fbmh"><div><div class="t">'+r.name+' · ถัง '+lbl+' (ปัจจุบัน)</div><div class="s">รวม '+(mem.length+cl.length)+' ราย · แยก 4 กลุ่มตามที่มา</div></div><div class="x" onclick="document.getElementById(\'fbOv\').style.display=\'none\'">✕</div></div>';
+   inner+=gBlock(FG[0],g0)+gBlock(FG[1],g1)+gBlock(FG[2],g2)+gBlock(FNc,cl);
+  }
   md.innerHTML=inner;document.getElementById('fbOv').style.display='block';
  };
  window.__fbSaveImg=function(){var el=document.getElementById('fbCard');if(!el){return;}
