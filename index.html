@@ -156,6 +156,7 @@ input,select,textarea{min-height:40px;font-size:14px!important}
 <button class="fab" onclick="openContractReport()" title="วิเคราะห์ประเภทสัญญา" style="bottom:282px;width:210px;justify-content:center;background:#0f766e;box-shadow:0 4px 16px rgba(15,118,110,.4)">📑 ประเภทสัญญา</button>
 <button class="fab" onclick="openAuthDoc()" title="เอกสารงานเร่งรัด (หนังสือมอบอำนาจให้ติดตามรถ)" style="bottom:66px;width:210px;justify-content:center;background:#2A2D8F;box-shadow:0 4px 16px rgba(42,45,143,.45)">📄 เอกสารงานเร่งรัด</button>
 <button class="fab" id="fabLogin" onclick="openLoginStats()" title="บันทึกการเข้าใช้งาน (เฉพาะ GM)" style="bottom:120px;width:210px;justify-content:center;background:#4338ca;box-shadow:0 4px 16px rgba(67,56,202,.4);display:none">👥 การเข้าใช้งาน</button>
+<button class="fab" onclick="openFlowBoard()" title="กระดานงานไหล · เป้าดึง 0 งวด" style="bottom:390px;width:210px;justify-content:center;background:#1d4ed8;box-shadow:0 4px 16px rgba(29,78,216,.42)">🌊 กระดานงานไหล</button>
 <div class="toast" id="toast"></div>
 <div class="ov" id="custOv"><div class="modal"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b id="custTitle" style="font-size:16px"></b><button class="btn gh" onclick="closeCust()">ปิด</button></div><div id="custBody"></div></div></div>
 <script>
@@ -3371,9 +3372,6 @@ setupLogin();
     function P(a,b){return b?((a/b)*100).toFixed(2)+'%':'0.00%';}
     function pdt(s){if(!s)return 0;s=''+s;var p=s.split('/');if(p.length===3)return (+p[2])*10000+(+p[1])*100+(+p[0]);var d=s.split('-');if(d.length===3)return (+d[0])*10000+(+d[1])*100+(+d[2]);return 0;}
     function dcount(x){try{return dailyCounted(x);}catch(e){return (x.pd>0);}}
-    function _thmo(s){for(var m=1;m<=12;m++){if(monTH[m]===s)return m;}return 0;}
-    /* หาวันจ่าย "ครั้งแรกที่ครบงวด" ในรอบนี้ จากประวัติ log — กันเคสที่ผ่อนควบ/ปิดบัญชีทีหลังมาทับวันชำระเดิม */
-    function logPd(x,perYM){var L=x.log||[],best=0;for(var k=0;k<L.length;k++){var e=L[k];if(!e)continue;var r=String(e.r||''),t=String(e.t||'');var full=(t==='รับชำระ'&&/ครบงวด|ผ่อนควบ|รับพร้อม/.test(r))||(t==='ปิดบัญชี'&&/ปิดบัญชี|ปิดยอด|รับยอดปิด/.test(r));if(!full)continue;var mt=r.match(/(\d{1,2})\s+([ก-๙.]+)\s+(\d{4})/);if(!mt)continue;var dd=+mt[1],mm=_thmo(mt[2]),yy=(+mt[3])-543;if(!mm)continue;var num=yy*10000+mm*100+dd;if(Math.floor(num/100)!==perYM)continue;if(!best||num<best)best=num;}return best;}
     function brName(c){var b=DATA.filter(function(x){return x.code===c;})[0];return b?b.name:c;}
     function period(){var pr=(typeof SYNC!=='undefined'&&SYNC.period)||'2569-10';var pp=pr.split('-');var by=parseInt(pp[0])||2569,mon=parseInt(pp[1])||9,ce=by-543;var ld=new Date(ce,mon,0).getDate();return{by:by,mon:mon,ce:ce,ld:ld};}
     function scope(){
@@ -3394,10 +3392,9 @@ setupLogin();
       var flat=[];
       recs.forEach(function(x){
         var dn=pdt(x.du),dday=dn?dn%100:1;if(dday<1)dday=1;if(dday>pe.ld)dday=pe.ld;
-        var deadline=Math.min(dday+3,pe.ld),_lpd=logPd(x,perYM),pd=_lpd||pdt(x.pdate),dueYM=dn?Math.floor(dn/100):0,payYM=pd?Math.floor(pd/100):0,paidNow=(payYM===perYM),st;
+        var deadline=Math.min(dday+3,pe.ld),pd=pdt(x.pdate),dueYM=dn?Math.floor(dn/100):0,payYM=pd?Math.floor(pd/100):0,paidNow=(payYM===perYM),st;
         if(!dcount(x))st='owed';else if(dueYM>perYM)st='done';else if(paidNow)st=((pd%100)<=deadline)?'done':'late';else st='done';
-        var _ps=_lpd?(_z2(_lpd%100)+'/'+_z2(Math.floor(_lpd/100)%100)+'/'+Math.floor(_lpd/10000)):'';
-        var o={x:x,status:st,d:dday,pdShow:_ps};days[dday].goal++;days[dday].list.push(o);flat.push(o);
+        var o={x:x,status:st,d:dday};days[dday].goal++;days[dday].list.push(o);flat.push(o);
         if(st==='done')days[dday].on++;else if(st==='late')days[dday].late++;else days[dday].owed++;
       });
       return{sc:sc,pe:pe,recs:recs,days:days,flat:flat};
@@ -3479,7 +3476,7 @@ setupLogin();
     }
 
     function pill(st){if(st==='done')return '<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;background:#e4f6ec;color:#1a8a4e">ชำระตรงดิว</span>';if(st==='late')return '<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;background:#efe7fb;color:#7c3aed">ชำระหลังดิว</span>';return '<span style="font-size:10px;font-weight:800;padding:2px 9px;border-radius:20px;background:#fde3e1;color:#d8382a">ค้าง</span>';}
-    function prow(o,i){var x=o.x;return '<tr style="border-bottom:1px solid #eef0f5"><td style="'+TDS+';text-align:center;color:#8790a8">'+(i+1)+'</td><td style="'+TDS+';font-weight:700">'+(x.n||'-')+'</td><td style="'+TDS+'">'+(x.tel||'-')+'</td><td style="'+TDS+'">'+(x.cno||'-')+'</td><td style="'+TDS+';text-align:center">'+(x.pn||'-')+'</td><td style="'+TDS+';text-align:center">'+(x.du||'-')+'</td><td style="'+TDS+';text-align:center;color:#15803d;font-weight:600">'+(o.pdShow||x.pdate||'—')+'</td><td style="'+TDS+';text-align:right;font-weight:700">'+money(x.f)+'</td><td style="'+TDS+'">'+pill(o.status)+'</td></tr>';}
+    function prow(o,i){var x=o.x;return '<tr style="border-bottom:1px solid #eef0f5"><td style="'+TDS+';text-align:center;color:#8790a8">'+(i+1)+'</td><td style="'+TDS+';font-weight:700">'+(x.n||'-')+'</td><td style="'+TDS+'">'+(x.tel||'-')+'</td><td style="'+TDS+'">'+(x.cno||'-')+'</td><td style="'+TDS+';text-align:center">'+(x.pn||'-')+'</td><td style="'+TDS+';text-align:center">'+(x.du||'-')+'</td><td style="'+TDS+';text-align:center;color:#15803d;font-weight:600">'+(x.pdate||'—')+'</td><td style="'+TDS+';text-align:right;font-weight:700">'+money(x.f)+'</td><td style="'+TDS+'">'+pill(o.status)+'</td></tr>';}
     function imgTable(arr,color){if(!arr.length)return '<div style="text-align:center;color:#9aa0b5;font-size:12px;padding:14px">— ไม่มีรายการ —</div>';
       return '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><tr style="background:'+color+';color:#fff"><th style="'+THS+'">#</th><th style="'+THS+'">ชื่อลูกค้า</th><th style="'+THS+'">เบอร์โทร</th><th style="'+THS+'">เลขสัญญา</th><th style="'+THS+';text-align:center">งวด</th><th style="'+THS+';text-align:center">วันดิว</th><th style="'+THS+';text-align:center">วันรับชำระ</th><th style="'+THS+';text-align:right">ค่างวด</th><th style="'+THS+'">สถานะ</th></tr>'+arr.map(prow).join('')+'</table>';}
     function mh(color,title,sub){return '<div style="background:'+color+';color:#fff;padding:12px 18px;display:flex;align-items:center;gap:10px"><div><div style="font-size:15px;font-weight:800">'+title+'</div>'+(sub?'<div style="font-size:10.5px;opacity:.9;margin-top:2px">'+sub+'</div>':'')+'</div><div onclick="dkClose()" style="margin-left:auto;font-size:20px;cursor:pointer">✕</div></div>';}
@@ -3698,6 +3695,147 @@ setupLogin();
   function boot(){tries++;var ok=false;try{var lo=document.getElementById('loginOv');ok=(typeof role!=='undefined')&&(typeof _BRLL!=='undefined')&&(!lo||lo.style.display==='none'||getComputedStyle(lo).display==='none');}catch(e){}if(!ok){if(tries<150)setTimeout(boot,2000);return;}var code=defCode();if(!code){if(tries<150)setTimeout(boot,2000);return;}load(code);}
   boot();
   setInterval(function(){try{if(window._wxCur&&!document.hidden)load(window._wxCur);}catch(e){}},600000);
+})();
+</script>
+<script>
+/* ===== กระดานงานไหล · เป้าดึง 0 งวด (โมดูลเพิ่ม ไม่แตะโค้ดเดิม) ===== */
+(function(){
+ if(window.__flowBoardInit)return; window.__flowBoardInit=true;
+ var CSS='.fb-sum{display:flex;gap:10px;align-items:stretch;margin:4px 0 10px;flex-wrap:wrap}'
+ +'.fb-sc{border-radius:13px;padding:11px 15px;color:#fff;flex:1;min-width:210px}'
+ +'.fb-sc .h{font-family:Prompt,sans-serif;font-weight:800;font-size:12px;opacity:.95;margin-bottom:7px}'
+ +'.fb-sc .bars{display:flex;gap:7px}.fb-sc .bg{flex:1;text-align:center;background:rgba(255,255,255,.17);border-radius:8px;padding:6px 3px}'
+ +'.fb-sc .bg .n{font-family:Prompt,sans-serif;font-weight:800;font-size:17px;line-height:1}.fb-sc .bg .t{font-size:9px;opacity:.9;margin-top:2px}'
+ +'.fb-s{background:linear-gradient(135deg,#1f9d6b,#157a52)}.fb-n{background:linear-gradient(135deg,#d9544a,#a83030)}'
+ +'.fb-k{background:linear-gradient(135deg,#4b3fb0,#2A2D8F);display:flex;flex-direction:column;justify-content:center;max-width:230px}'
+ +'.fb-k .big{font-family:Prompt,sans-serif;font-weight:800;font-size:15px}.fb-k .sub{font-size:11px;opacity:.95;margin-top:3px}'
+ +'.fb-fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;font-size:13px}'
+ +'.fb-fbar select{font-size:12px;padding:5px 9px;border-radius:8px;border:1px solid #cdd3e6;background:#fff;color:#2A2D8F;font-weight:600;font-family:inherit}'
+ +'.fb-zt{font-family:Prompt,sans-serif;font-size:12.5px;color:#fff;background:#2A2D8F;display:inline-block;padding:3px 12px;border-radius:7px;margin:12px 0 0}'
+ +'.fb-tb{width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;table-layout:fixed}'
+ +'.fb-tb th{background:#2A2D8F;color:#fff;padding:6px 7px;font-size:10.5px;font-weight:700;text-align:center;white-space:nowrap}'
+ +'.fb-tb td{padding:6px 7px;border-bottom:1px solid #eef0f5;text-align:center;vertical-align:middle}'
+ +'.fb-tb td.l,.fb-tb th.l{text-align:left}.fb-tb td.l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+ +'.fb-tb tr:nth-child(even) td{background:#fafbfe}'
+ +'.fb-sep{border-left:2px solid #d7dcf0}.fb-mid{border-left:2px solid #d7dcf0}'
+ +'.fb-click{cursor:pointer}.fb-click:hover{background:#fff6e9 !important;outline:2px solid #F37117;outline-offset:-2px}'
+ +'.fb-grow td{background:#eef0fb !important;font-weight:800}.fb-gtot td{background:#e3f5ee !important;font-weight:800}.fb-grand td{background:#2A2D8F !important;color:#fff;font-weight:800}'
+ +'.fbov{position:fixed;inset:0;background:rgba(20,24,60,.55);z-index:120;display:none}'
+ +'.fbmd{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:880px;max-width:94vw;max-height:88vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 30px 70px rgba(0,0,0,.4)}'
+ +'.fbmh{position:sticky;top:0;background:linear-gradient(120deg,#23265f,#3c40a8);color:#fff;padding:13px 18px;display:flex;align-items:center;gap:10px;z-index:2}'
+ +'.fbmh .t{font-family:Prompt,sans-serif;font-weight:800;font-size:15px}.fbmh .s{font-size:11px;color:#c9cdf0}.fbmh .x{margin-left:auto;cursor:pointer;font-size:21px}'
+ +'.fbgrp{border-radius:11px;border:1px solid #e6e8f2;margin:12px 16px;overflow:hidden}.fbgh{padding:8px 13px;font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px}.fbgh .c{margin-left:auto;font-family:Prompt,sans-serif}'
+ +'.fbgt{width:100%;border-collapse:collapse;font-size:11.5px}.fbgt th{background:#f1f3f8;color:#55607a;padding:5px 9px;text-align:left;font-size:10.5px}.fbgt td{padding:5px 9px;border-bottom:1px solid #f0f2f7;text-align:left}';
+ var sEl=document.createElement('style');sEl.textContent=CSS;document.head.appendChild(sEl);
+ var ov=document.createElement('div');ov.className='fbov';ov.id='fbOv';ov.innerHTML='<div class="fbmd" id="fbMd"></div>';
+ ov.addEventListener('click',function(e){if(e.target===ov)ov.style.display='none';});document.body.appendChild(ov);
+ document.addEventListener('keydown',function(e){if(e.key==='Escape')ov.style.display='none';});
+
+ var ZN={1:'เขต 1',2:'เขต 2',3:'เขต 3'},TP={used:'🛵 รถมือสอง',new:'🏍️ รถใหม่'};
+ var FBST={zone:'all',type:'all',branch:'all'},ROWS=[];
+ function P(n,d){return (d?n/d*100:0).toFixed(2);}
+ function sbuck(x){return Math.min(2,x.b||0);}
+ function coll(x){try{return (typeof isCollected==='function')?isCollected(x):false;}catch(e){return false;}}
+ function lbuck(x){try{return (typeof liveBucket==='function')?liveBucket(x):sbuck(x);}catch(e){return sbuck(x);}}
+ function build(){
+  var codes=(typeof VBC==='function')?VBC():DATA.map(function(b){return b.code;});
+  var al={};codes.forEach(function(c){al[c]=1;});
+  var B={};
+  CUST.forEach(function(x){
+   if(String(x.amType)!=='1'||!al[x.s])return;
+   if(!B[x.s]){var d=DATA.find(function(z){return z.code===x.s;})||{};B[x.s]={code:x.s,name:d.name||x.s,zone:d.zone||0,type:(d.type||'used'),tot:0,s0:0,s1:0,s2:0,l0:0,l1:0,l2:0,l3:0,closed:0,m:{0:[],1:[],2:[],3:[]}};}
+   var o=B[x.s],sb=sbuck(x);o.tot++;o['s'+sb]++;
+   var lb=lbuck(x);if(lb<0){o.closed++;}else{var k=Math.min(3,lb);o['l'+k]++;o.m[k].push(x);}
+  });
+  ROWS=Object.keys(B).map(function(k){return B[k];}).sort(function(a,b){return a.code<b.code?-1:1;});
+ }
+ function agg(a){return a.reduce(function(o,r){return {tot:o.tot+r.tot,s0:o.s0+r.s0,s1:o.s1+r.s1,s2:o.s2+r.s2,l0:o.l0+r.l0,l1:o.l1+r.l1,l2:o.l2+r.l2,l3:o.l3+r.l3,closed:o.closed+r.closed};},{tot:0,s0:0,s1:0,s2:0,l0:0,l1:0,l2:0,l3:0,closed:0});}
+ function nb(n,tot,c){return '<div style="font-family:Prompt,sans-serif;font-weight:800;font-size:13px;color:'+c+';line-height:1.1;white-space:nowrap">'+n+'</div><div style="font-size:9px;color:#9aa0b5">'+P(n,tot)+'%</div>';}
+ function clk(n,tot,s,c,code,bkt){var d=n-s,dc=d>0?'#15803d':d<0?'#c0392b':'#9aa0b5',tx=d===0?'=':(d>0?'▲+'+d:'▼'+(-d));
+  return '<td class="fb-click'+(bkt===0?' fb-mid':'')+'" onclick="__fbDrill(\''+code+'\','+bkt+')"><div style="font-family:Prompt,sans-serif;font-weight:800;font-size:13px;color:'+c+';line-height:1.1;white-space:nowrap;text-decoration:underline dotted '+c+'">'+n+' <span style="font-size:9px;color:'+dc+';font-weight:700">'+tx+'</span></div><div style="font-size:9px;color:#9aa0b5">'+P(n,tot)+'%</div></td>';}
+ function p0(r){var a=+P(r.s0,r.tot),b=+P(r.l0,r.tot),d=b-a,up=d>=0,dc=up?'#15803d':'#c0392b';
+  return '<td class="fb-sep" style="font-size:11px">'+a.toFixed(2)+'% &rarr; <b style="color:'+dc+';font-family:Prompt,sans-serif">'+b.toFixed(2)+'%</b><div style="font-size:11px;color:'+dc+';font-weight:800">('+(up?'+':'')+d.toFixed(2)+'%)</div></td>';}
+ function hrow(){return '<tr><th rowspan="2" class="l" style="vertical-align:bottom">สาขา</th><th rowspan="2" style="vertical-align:bottom">รวม</th>'
+  +'<th colspan="3" class="fb-sep" style="background:#1f7a52">📦 ตั้งต้น 1 ต.ค.</th><th colspan="4" class="fb-mid" style="background:#8a3030">🌊 ปัจจุบัน — 👆คลิกดูรายชื่อ</th>'
+  +'<th rowspan="2" class="fb-sep" style="vertical-align:bottom">%0 งวด<br>ต้น&rarr;ตอนนี้ (ขยับ)</th></tr>'
+  +'<tr><th class="fb-sep">0 ง.</th><th>1 ง.</th><th>2 ง.</th><th class="fb-mid">0 ง.</th><th>1 ง.</th><th>2 ง.</th><th>🔴3 ง.</th></tr>';}
+ var COLG='<colgroup><col style="width:17%"><col style="width:6%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:8%"><col style="width:15%"></colgroup>';
+ function trow(r){return '<tr><td class="l"><b style="color:#222;font-size:11.5px">'+r.name+'</b></td><td style="color:#555;font-weight:600">'+r.tot+'</td>'
+  +'<td class="fb-sep">'+nb(r.s0,r.tot,'#15803d')+'</td><td>'+nb(r.s1,r.tot,'#d97706')+'</td><td>'+nb(r.s2,r.tot,'#c0392b')+'</td>'
+  +clk(r.l0,r.tot,r.s0,'#15803d',r.code,0)+clk(r.l1,r.tot,r.s1,'#d97706',r.code,1)+clk(r.l2,r.tot,r.s2,'#c0392b',r.code,2)
+  +'<td class="fb-click" style="background:#fff0ef" onclick="__fbDrill(\''+r.code+'\',3)"><div style="font-family:Prompt,sans-serif;font-weight:800;color:#b91c1c;text-decoration:underline dotted #b91c1c">'+r.l3+'</div><div style="font-size:9px;color:#9aa0b5">'+P(r.l3,r.tot)+'%</div></td>'
+  +p0(r)+'</tr>';}
+ function srow(cls,label,s){var a=+P(s.s0,s.tot),b=+P(s.l0,s.tot),d=b-a,up=d>=0,g=(cls==='fb-grand'),dc=g?'#bfe8d5':(up?'#15803d':'#c0392b');
+  return '<tr class="'+cls+'"><td class="l">'+label+'</td><td>'+s.tot+'</td>'
+  +'<td class="fb-sep">'+nb(s.s0,s.tot,g?'#bfe8d5':'#15803d')+'</td><td>'+nb(s.s1,s.tot,g?'#fff':'#d97706')+'</td><td>'+nb(s.s2,s.tot,g?'#fff':'#c0392b')+'</td>'
+  +'<td class="fb-mid">'+nb(s.l0,s.tot,g?'#bfe8d5':'#15803d')+'</td><td>'+nb(s.l1,s.tot,g?'#fff':'#d97706')+'</td><td>'+nb(s.l2,s.tot,g?'#fff':'#c0392b')+'</td><td>'+nb(s.l3,s.tot,g?'#fff':'#b91c1c')+'</td>'
+  +'<td class="fb-sep" style="font-size:11px">'+a.toFixed(2)+'%&rarr;'+b.toFixed(2)+'%<div style="color:'+dc+';font-weight:800">('+(up?'+':'')+d.toFixed(2)+'%)</div></td></tr>';}
+ function summ(s){var a=+P(s.s0,s.tot),b=+P(s.l0,s.tot),d=b-a,up=d>=0;
+  return '<div class="fb-sum"><div class="fb-sc fb-s"><div class="h">📦 ตั้งต้น 1 ต.ค. ('+s.tot.toLocaleString()+' ราย)</div><div class="bars">'
+  +'<div class="bg"><div class="n">'+s.s0.toLocaleString()+'</div><div class="t">0 งวด · '+P(s.s0,s.tot)+'%</div></div>'
+  +'<div class="bg"><div class="n">'+s.s1.toLocaleString()+'</div><div class="t">1 งวด · '+P(s.s1,s.tot)+'%</div></div>'
+  +'<div class="bg"><div class="n">'+s.s2.toLocaleString()+'</div><div class="t">2 งวด · '+P(s.s2,s.tot)+'%</div></div></div></div>'
+  +'<div class="fb-sc fb-n"><div class="h">🌊 ปัจจุบัน (ไหลแล้ว)'+(s.closed?' · ปิดบัญชี '+s.closed:'')+'</div><div class="bars">'
+  +'<div class="bg"><div class="n">'+s.l0.toLocaleString()+'</div><div class="t">0 งวด · '+P(s.l0,s.tot)+'%</div></div>'
+  +'<div class="bg"><div class="n">'+s.l1.toLocaleString()+'</div><div class="t">1 งวด · '+P(s.l1,s.tot)+'%</div></div>'
+  +'<div class="bg"><div class="n">'+s.l2.toLocaleString()+'</div><div class="t">2 งวด · '+P(s.l2,s.tot)+'%</div></div>'
+  +'<div class="bg" style="background:rgba(0,0,0,.2)"><div class="n">'+s.l3.toLocaleString()+'</div><div class="t">🔴3 งวด · '+P(s.l3,s.tot)+'%</div></div></div></div>'
+  +'<div class="fb-sc fb-k"><div class="h">🎯 %0 งวด (ปัจจุบัน)</div><div class="big">'+a.toFixed(2)+'% &rarr; '+b.toFixed(2)+'%</div><div class="sub" style="color:'+(up?'#9fffd6':'#ffd1cc')+'">'+(up?'▲ +':'▼ ')+Math.abs(d).toFixed(2)+'% '+(up?'ดีขึ้น':'ตก')+'</div></div></div>';}
+ window.__fbRenderBody=function(){
+  var vis=ROWS.filter(function(r){if(FBST.branch!=='all')return r.code===FBST.branch;return (FBST.zone==='all'||r.zone==+FBST.zone)&&(FBST.type==='all'||r.type===FBST.type);});
+  var zsel='<select onchange="FBSET(\'zone\',this.value)">'+['all','1','2','3'].map(function(z){return '<option value="'+z+'"'+(FBST.zone===z?' selected':'')+'>'+(z==='all'?'ทุกเขต':'เขต '+z)+'</option>';}).join('')+'</select>';
+  var tsel='<select onchange="FBSET(\'type\',this.value)">'+[['all','ทุกประเภท'],['new','รถใหม่'],['used','รถมือสอง']].map(function(t){return '<option value="'+t[0]+'"'+(FBST.type===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select>';
+  var bsel='<select onchange="FBSET(\'branch\',this.value)"><option value="all"'+(FBST.branch==='all'?' selected':'')+'>— ทุกสาขา —</option>'+ROWS.map(function(r){return '<option value="'+r.code+'"'+(FBST.branch===r.code?' selected':'')+'>'+r.name+'</option>';}).join('')+'</select>';
+  var fbar='<div class="fb-fbar"><b style="color:#55607a">🔎 กรองดู:</b>'+zsel+tsel+bsel+'<button class="btn" style="background:#16a34a;border-color:#16a34a;margin-left:auto" onclick="__fbSaveImg()">🖼 บันทึกรูป</button></div>';
+  var h='<div id="fbCard">'+summ(agg(vis));
+  [1,2,3].filter(function(z){return vis.some(function(r){return r.zone===z;});}).forEach(function(z){
+   ['used','new'].filter(function(t){return vis.some(function(r){return r.zone===z&&r.type===t;});}).forEach(function(t){
+    var g=vis.filter(function(r){return r.zone===z&&r.type===t;});
+    h+='<div class="fb-zt">'+TP[t]+' · '+ZN[z]+'</div><table class="fb-tb">'+COLG+hrow()+g.map(trow).join('')+(g.length>1?srow('fb-grow','รวม '+TP[t].replace(/🛵 |🏍️ /g,'')+' '+ZN[z],agg(g)):'')+'</table>';
+   });
+   var zg=vis.filter(function(r){return r.zone===z;});if(zg.length>1)h+='<table class="fb-tb" style="margin-top:0">'+COLG+srow('fb-gtot','🧮 รวม '+ZN[z]+' (ทั้งหมด)',agg(zg))+'</table>';
+  });
+  var zc=[1,2,3].filter(function(z){return vis.some(function(r){return r.zone===z;});});
+  if(zc.length>1)h+='<table class="fb-tb" style="margin-top:4px">'+COLG+srow('fb-grand','📊 รวมทุกเขต',agg(vis))+'</table>';
+  h+='</div>';
+  var bd=document.getElementById('custBody');if(bd)bd.innerHTML=fbar+h;
+ };
+ window.FBSET=function(k,v){FBST[k]=v;window.__fbRenderBody();};
+ window.openFlowBoard=function(){
+  if(typeof CUST==='undefined'||!CUST.length){if(typeof toast==='function')toast('ยังไม่มีข้อมูล · กรุณาเข้าสู่ระบบก่อน');return;}
+  FBST={zone:'all',type:'all',branch:'all'};build();
+  var o=document.getElementById('custOv');if(o)o.style.display='block';
+  var tt=document.getElementById('custTitle');if(tt)tt.textContent='🌊 กระดานงานไหล · เป้าดึง 0 งวด';
+  window.__fbRenderBody();
+ };
+ var FN={0:['🟢','#15803d','#e8f7ef','ไหลขึ้นมา (เก็บได้จนเป็นปัจจุบัน)','เดิมค้าง 1–2 งวด จ่ายจนขยับขึ้น 0 งวด'],1:['🔷','#0f766e','#e6f6f4','รักษาระดับ (เดิม 0 + จ่ายเดือนนี้แล้ว)','อยู่ 0 งวดอยู่แล้ว เข้ามาชำระเดือนนี้'],2:['⚪','#55607a','#f1f3f8','ยังไม่จ่าย แต่ยังอยู่ 0 งวด','ยังไม่ถึงดิว / จ่ายล่วงหน้าไว้']};
+ var FNx={0:['🔴','#c0392b','#fdeceb','ไหลลงมาจากงวดอื่น (ต้องเร่ง!)','เดิมงวดน้อยกว่า ค้างผ่อนเลยไหลลงมา'],1:['⚪','#55607a','#f1f3f8','ยังไม่จ่าย ยังอยู่งวดเดิม','ยังไม่ถึงดิว'],2:['🟢','#b45309','#fff4e2','จ่ายแล้วขยับขึ้น (ยังไม่ถึง 0)','จ่ายแล้วดีขึ้น แต่ยังมีงวดค้าง']};
+ function esc(s){return String(s==null?'':s).replace(/[<>&]/g,function(c){return ({'<':'&lt;','>':'&gt;','&':'&amp;'})[c];});}
+ function fmtf(v){try{return fmt(v||0);}catch(e){return (v||0).toLocaleString();}}
+ function detTab(arr){if(!arr.length)return '<div style="padding:9px 14px;color:#9aa0b5;font-size:11.5px">— ไม่มีรายการ —</div>';
+  var h='<table class="fbgt"><tr><th>ชื่อลูกค้า</th><th>เลขสัญญา</th><th>เบอร์โทร</th><th style="text-align:right">ค่างวด</th><th style="text-align:center">วันดิว</th></tr>';
+  arr.slice(0,200).forEach(function(x){h+='<tr><td style="font-weight:700">'+esc(x.n)+'</td><td>'+esc(x.cno)+'</td><td>'+esc(x.tel)+'</td><td style="text-align:right">'+fmtf(x.f)+'</td><td style="text-align:center">'+esc(x.du)+'</td></tr>';});
+  h+='</table>'+(arr.length>200?'<div style="font-size:10.5px;color:#9aa0b5;padding:6px 14px;text-align:center">… แสดง 200 จาก '+arr.length+' ราย</div>':'');return h;}
+ function gBlock(meta,arr){return '<div class="fbgrp"><div class="fbgh" style="background:'+meta[2]+';color:'+meta[1]+'">'+meta[0]+' <div><div>'+meta[3]+'</div><div style="font-size:10px;font-weight:400;opacity:.85">'+meta[4]+'</div></div><span class="c" style="color:'+meta[1]+'">'+arr.length+' ราย</span></div>'+detTab(arr)+'</div>';}
+ window.__fbDrill=function(code,bkt){
+  var r=ROWS.find(function(x){return x.code===code;});if(!r)return;
+  var mem=r.m[bkt]||[],g0=[],g1=[],g2=[];
+  mem.forEach(function(x){var sb=Math.min(3,x.b||0);
+   if(bkt===0){ if(sb>0)g0.push(x); else if(coll(x))g1.push(x); else g2.push(x); }
+   else { if(sb<bkt)g0.push(x); else if(sb>bkt)g2.push(x); else g1.push(x); }
+  });
+  var lbl=bkt===3?'3 งวด (หลุดเกณฑ์)':bkt+' งวด',md=document.getElementById('fbMd');
+  var FG=(bkt===0)?FN:FNx;
+  var inner='<div class="fbmh"><div><div class="t">'+r.name+' · ถัง '+lbl+' (ปัจจุบัน)</div><div class="s">รวม '+mem.length+' ราย · แยก 3 กลุ่มตามที่มา</div></div><div class="x" onclick="document.getElementById(\'fbOv\').style.display=\'none\'">✕</div></div>';
+  inner+=gBlock(FG[0],g0)+gBlock(FG[1],g1)+gBlock(FG[2],g2);
+  md.innerHTML=inner;document.getElementById('fbOv').style.display='block';
+ };
+ window.__fbSaveImg=function(){var el=document.getElementById('fbCard');if(!el){return;}
+  if(typeof html2canvas==='undefined'){if(typeof toast==='function')toast('บันทึกรูปต้องออนไลน์ · ลองแคปหน้าจอแทน');return;}
+  if(typeof toast==='function')toast('กำลังสร้างรูป…');
+  var tag='ทั้งหมด';if(FBST.branch!=='all'){var r=ROWS.find(function(x){return x.code===FBST.branch;});tag=r?r.name:FBST.branch;}else{var p=[];if(FBST.zone!=='all')p.push('เขต'+FBST.zone);if(FBST.type!=='all')p.push(FBST.type==='new'?'รถใหม่':'รถมือสอง');tag=p.length?p.join('_'):'ทั้งหมด';}
+  html2canvas(el,{scale:2,backgroundColor:'#ffffff'}).then(function(c){var a=document.createElement('a');a.download='กระดานงานไหล_'+tag+'.png';a.href=c.toDataURL('image/png');a.click();}).catch(function(e){if(typeof toast==='function')toast('บันทึกไม่สำเร็จ');});
+ };
 })();
 </script>
 </body></html>
