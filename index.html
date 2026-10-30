@@ -3883,7 +3883,8 @@ setupLogin();
    +'.trbd{padding:11px 16px 15px;background:#fff}'
    +'.trfilt{display:flex;gap:16px;align-items:center;background:#f1f3fb;border-radius:10px;padding:9px 14px;margin-bottom:10px;flex-wrap:wrap}'
    +'.trfilt .lb{font-family:Prompt,sans-serif;font-weight:700;font-size:12px;color:#2A2D8F}.trfilt .grp{display:flex;gap:5px}'
-   +'.trb{border:1px solid #cfd4e6;background:#fff;border-radius:8px;padding:5px 13px;font-size:12px;cursor:pointer;color:#444}'
+   +'.trb{border:1px solid #cfd4e6;background:#fff;border-radius:8px;padding:5px 13px;font-size:12px;cursor:pointer;color:#444;font-family:Prompt,sans-serif}'
+   +'#trOv,#trOv button,#trOv select,#trOv input{font-family:Prompt,"Segoe UI",Tahoma,sans-serif}'
    +'.trb:hover{border-color:#F37117}.trb.on{background:#2A2D8F;color:#fff;border-color:#2A2D8F;font-weight:600}'
    +'.trsh{display:flex;align-items:center;gap:7px;font-family:Prompt,sans-serif;font-size:12px;color:#2A2D8F;background:#eef0fb;border-radius:8px;padding:8px 12px;margin-bottom:8px;flex-wrap:wrap}'
    +'.trtab{width:100%;border-collapse:collapse;font-size:10px}'
@@ -3949,9 +3950,12 @@ setupLogin();
     var BASE=(typeof _baseCust==='function')?_baseCust():{};
     var DONE=(typeof dailyCounted==='function')?dailyCounted:_coll;
     function _duY(du){var s=String(du||'').split('/');if(s.length<3)return 0;var y=parseInt(s[2]);if(y<100)y+=2000;if(y>2400)y-=543;return y*100+parseInt(s[1]);}
-    function _paidTM(x){ /* จ่ายเงินจริงเดือนนี้ (ไม่รวมจ่ายล่วงหน้าที่จ่ายไปก่อนแล้ว) */
+    function _paidTM(x){ /* มีการรับชำระจริงในเดือนนี้ (รวมจ่ายบางส่วน · ไม่รวมจ่ายล่วงหน้าที่จ่ายไปก่อนแล้ว) */
       if(typeof _paidInPeriodLog==='function'&&_paidInPeriodLog(x))return true;
-      return _pmYM(x.pdate)===PER&&!_pp2(x);}
+      return _pmYM(x.pdate)===PER;}
+    function _recv(x){ /* ยอดรับชำระจริง = สูตรเดียวกับระบบ (_paidSum จาก log, รองรับหลายงวด) */
+      var s=(typeof _paidSum==='function')?_paidSum(x):0;
+      return s||(+x.pl||0)||(+x.f||0);}
     CUST.forEach(function(x){
       if(!al[x.s])return;
       if(!B[x.s]){var m=_bmeta(x.s);B[x.s]={c:x.s,nm:m.name||x.s,z:m.zone||0,tp:(m.type||'used'),
@@ -3964,7 +3968,7 @@ setupLogin();
         o.due+=(+x.f||0);
         if(DONE(x))o.done++;
         var ptm=_paidTM(x);
-        if(ptm)o.col+=((x.pl>0)?(+x.pl):(+x.f||0));
+        if(ptm)o.col+=_recv(x);
         var br=BASE[String(x.cno)], basePre=br?(_duY(br.du)>PER):(_duY(x.du)>PER);
         if(basePre){o.pre++; if(ptm)o.rep++;}
       }
