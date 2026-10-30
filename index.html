@@ -3922,7 +3922,7 @@ setupLogin();
    +'<th class="gC g4" colspan="3">⚖️ ความเสี่ยงพอร์ต</th></tr>'
    +'<tr><th class="g1 sepC">เป้า</th><th class="g1b">ผลงาน</th><th class="g1b">%ผลงาน</th>'
    +'<th class="g2 sepP">ล่วงหน้า<br>ตั้งต้น</th><th class="g2b">↩มาจ่าย<br>ซ้ำ</th><th class="g2b">🔇เงียบ</th>'
-   +'<th class="g3 sepM">ยอดต้องเก็บ</th><th class="g3">ยอดเก็บได้</th><th class="hnavy">%เงิน · สถานะ</th>'
+   +'<th class="g3 sepM">ยอดต้องเก็บ</th><th class="g3">ยอดเก็บได้</th><th class="hnavy">%เงิน</th>'
    +'<th class="g4 sepR">พอร์ตรวม<br>(ลบ.)</th><th class="hrk">คาดสูญ<br>(ลบ.)</th><th class="hrk">%คาดสูญ</th></tr>'
    +'</thead><tbody id="trtb"></tbody></table></div>'
    +'<div class="trft">โมโต24 · สาขาเก็บเอง (amType=1) · ข้อมูลสดจากระบบ · คาดสูญ = ยอดคงเหลือของรายการในงานทีมกฎหมายของสาขา · พอร์ตรวม = ยอดคงเหลือทุกสัญญาในสาขา · เรียงจาก %ผลงานน้อย→มาก · กรองได้</div>'
@@ -3956,6 +3956,18 @@ setupLogin();
     function _recv(x){ /* ยอดรับชำระจริง = สูตรเดียวกับระบบ (_paidSum จาก log, รองรับหลายงวด) */
       var s=(typeof _paidSum==='function')?_paidSum(x):0;
       return s||(+x.pl||0)||(+x.f||0);}
+    function _isAdv(x){ /* ล่วงหน้า = สูตรเดียวกับ ST.adv ของระบบเป๊ะ (นับผลงานได้ แต่วันรับชำระไม่อยู่ในเดือนนี้) */
+      var closed=(x.statusTag==='ปิดบัญชี'||x.closeType||x.closeDate);
+      if(!closed&&_pp2(x))return false;
+      if(!closed){
+        if(x.preOverride==='out')return false;
+        if(x.preOverride==='in')return true;
+        var d=(typeof cohDone==='function'&&cohDone(x))||(typeof _graceDone==='function'&&_graceDone(x))||(typeof _paidInPeriodLog==='function'&&_paidInPeriodLog(x));
+        if(!d)return false;
+      }
+      var ref=x.pdate||(closed?(x.statusDateStr||x.closeDate||''):'');
+      if(ref){var q=String(ref).split('/');if(q.length===3){var dd=parseInt(q[0]),pm=parseInt(q[1]),py=parseInt(q[2]);if(py<100)py+=2000;if(py>2400)py-=543;if(pm===(PER%100)&&py===Math.floor(PER/100)&&dd>=1)return false;}}
+      return true;}
     CUST.forEach(function(x){
       if(!al[x.s])return;
       if(!B[x.s]){var m=_bmeta(x.s);B[x.s]={c:x.s,nm:m.name||x.s,z:m.zone||0,tp:(m.type||'used'),
@@ -3969,8 +3981,8 @@ setupLogin();
         if(DONE(x))o.done++;
         var ptm=_paidTM(x);
         if(ptm)o.col+=_recv(x);
-        var br=BASE[String(x.cno)], basePre=br?(_duY(br.du)>PER):(_duY(x.du)>PER);
-        if(basePre){o.pre++; if(ptm)o.rep++;}
+        var _xb=BASE[String(x.cno)]||x;         // เรคคอร์ด baseline 1 ต.ค.
+        if(_isAdv(_xb)){o.pre++; if((+x.pd||0)>0)o.rep++;}  // ตั้งต้น=ล่วงหน้า 1 ต.ค. · ซ้ำ=เดือนนี้จ่ายแล้ว
       }
     });
     return Object.keys(B).map(function(k){return B[k];});
@@ -3989,14 +4001,14 @@ setupLogin();
         +'<td class="c1 sepC">'+fmtN(r.tgt)+'</td><td class="c1">'+fmtN(r.done)+'</td><td class="c1"><b class="'+bandWp(r._wp)+'">'+r._wp.toFixed(2)+'%</b></td>'
         +'<td class="c2 sepP">'+fmtN(r.pre)+'</td><td class="c2"><b>'+fmtN(r.rep)+'</b></td><td class="c2" style="background:#fff7ea;color:#b45309">'+fmtN(sil)+'</td>'
         +'<td class="cmb sepM">'+fmtN(r.due)+'</td><td class="cmb">'+fmtN(r.col)+'</td>'
-        +'<td class="cmb"><b class="'+bd[2]+'">'+r._mp.toFixed(2)+'%</b> <span class="pill '+bd[1]+'">'+bd[0]+'</span></td>'
+        +'<td class="cmb"><b class="'+bd[2]+'">'+r._mp.toFixed(2)+'%</b></td>'
         +'<td class="cport sepR">'+mb(r.tot)+'</td><td class="cleg">'+mb(r.leg)+'</td><td class="crk"><b class="'+rkCls(r._rk)+'">'+r._rk.toFixed(2)+'%</b></td></tr>';
     });
     var twp=T.tgt?100*T.done/T.tgt:0,tmp=T.due?100*T.col/T.due:0,trk=T.tot?100*T.leg/T.tot:0,tbd=band(tmp);
     h+='<tr class="tot"><td class="l">รวม ('+rows.length+' สาขา)</td>'
       +'<td class="sepC">'+fmtN(T.tgt)+'</td><td>'+fmtN(T.done)+'</td><td>'+twp.toFixed(2)+'%</td>'
       +'<td class="sepP">'+fmtN(T.pre)+'</td><td>'+fmtN(T.rep)+'</td><td>'+fmtN(T.pre-T.rep)+'</td>'
-      +'<td class="sepM">'+fmtN(T.due)+'</td><td>'+fmtN(T.col)+'</td><td>'+tmp.toFixed(2)+'% · '+tbd[0]+'</td>'
+      +'<td class="sepM">'+fmtN(T.due)+'</td><td>'+fmtN(T.col)+'</td><td>'+tmp.toFixed(2)+'%</td>'
       +'<td class="sepR">'+mb(T.tot)+'</td><td>'+mb(T.leg)+'</td><td>'+trk.toFixed(2)+'%</td></tr>';
     document.getElementById('trtb').innerHTML=h;
     document.getElementById('trsh').innerHTML='🏢 <b>สาขาเก็บเอง</b> · ผลงาน '+fmtN(T.done)+'/'+fmtN(T.tgt)+' (<b>'+twp.toFixed(2)+'%</b>) · ล่วงหน้า '+fmtN(T.pre)+' → มาจ่ายซ้ำ '+fmtN(T.rep)+' · เก็บเงิน '+mb(T.col)+'/'+mb(T.due)+' ลบ ('+tmp.toFixed(2)+'%) · พอร์ตรวม '+mb(T.tot)+' ลบ · ⚖️ คาดสูญ '+mb(T.leg)+' ลบ = <b style="color:#ffd1cc">'+trk.toFixed(2)+'%</b>';
