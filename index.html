@@ -3949,6 +3949,9 @@ setupLogin();
     var BASE=(typeof _baseCust==='function')?_baseCust():{};
     var DONE=(typeof dailyCounted==='function')?dailyCounted:_coll;
     function _duY(du){var s=String(du||'').split('/');if(s.length<3)return 0;var y=parseInt(s[2]);if(y<100)y+=2000;if(y>2400)y-=543;return y*100+parseInt(s[1]);}
+    function _paidTM(x){ /* จ่ายเงินจริงเดือนนี้ (ไม่รวมจ่ายล่วงหน้าที่จ่ายไปก่อนแล้ว) */
+      if(typeof _paidInPeriodLog==='function'&&_paidInPeriodLog(x))return true;
+      return _pmYM(x.pdate)===PER&&!_pp2(x);}
     CUST.forEach(function(x){
       if(!al[x.s])return;
       if(!B[x.s]){var m=_bmeta(x.s);B[x.s]={c:x.s,nm:m.name||x.s,z:m.zone||0,tp:(m.type||'used'),
@@ -3959,9 +3962,11 @@ setupLogin();
       if(String(x.amType)==='1'){
         o.tgt++;
         o.due+=(+x.f||0);
-        if(DONE(x)){o.done++; o.col+=(+x.f||0);}
+        if(DONE(x))o.done++;
+        var ptm=_paidTM(x);
+        if(ptm)o.col+=((x.pl>0)?(+x.pl):(+x.f||0));
         var br=BASE[String(x.cno)], basePre=br?(_duY(br.du)>PER):(_duY(x.du)>PER);
-        if(basePre){o.pre++; if(_pmYM(x.pdate)===PER)o.rep++;}
+        if(basePre){o.pre++; if(ptm)o.rep++;}
       }
     });
     return Object.keys(B).map(function(k){return B[k];});
