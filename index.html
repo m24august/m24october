@@ -3866,4 +3866,148 @@ setupLogin();
   };
 })();
 </script>
+<script>
+/* ===== รายงานประเมินสาขาเก็บเอง (append-only · ลบเฉพาะก้อน <script> นี้ = เอาออกได้ทันที ไม่กระทบของเดิม) =====
+   ข้อมูลสดจาก CUST : เป้า/ผลงาน/%ผลงาน · ล่วงหน้า(ตั้งต้น/มาจ่ายซ้ำ/เงียบ) · ยอดเก็บเงิน(รวมก้อนเดียว) · พอร์ต/คาดสูญ
+   นิยาม: คาดสูญ = ยอดคงเหลือ(bal) ของรายการที่อยู่ในงานทีมกฎหมาย (amType=3) ของสาขานั้น · พอร์ตรวม = bal ทุกสัญญาในสาขา
+   ======================================================================================================= */
+(function(){
+  if(window.__trInit)return; window.__trInit=1;
+  var CSS=''
+   +'#trOv{position:fixed;inset:0;background:rgba(20,24,60,.55);z-index:130;display:none;overflow:auto;padding:14px}'
+   +'#trMd{width:1320px;max-width:97vw;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.4)}'
+   +'.trhd{position:sticky;top:0;z-index:3;background:linear-gradient(120deg,#23265f,#3c40a8);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:11px;border-bottom:4px solid #F37117}'
+   +'.trhd .ic{width:40px;height:40px;border-radius:11px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;font-size:21px}'
+   +'.trhd .t2{font-family:Prompt,sans-serif;font-weight:800;font-size:18px}.trhd .t1{font-size:10px;color:#c9cdf0}'
+   +'.trhd .x{margin-left:auto;cursor:pointer;font-size:23px;line-height:1}'
+   +'.trbd{padding:11px 16px 15px;background:#fff}'
+   +'.trfilt{display:flex;gap:16px;align-items:center;background:#f1f3fb;border-radius:10px;padding:9px 14px;margin-bottom:10px;flex-wrap:wrap}'
+   +'.trfilt .lb{font-family:Prompt,sans-serif;font-weight:700;font-size:12px;color:#2A2D8F}.trfilt .grp{display:flex;gap:5px}'
+   +'.trb{border:1px solid #cfd4e6;background:#fff;border-radius:8px;padding:5px 13px;font-size:12px;cursor:pointer;color:#444}'
+   +'.trb:hover{border-color:#F37117}.trb.on{background:#2A2D8F;color:#fff;border-color:#2A2D8F;font-weight:600}'
+   +'.trsh{display:flex;align-items:center;gap:7px;font-family:Prompt,sans-serif;font-size:12px;color:#2A2D8F;background:#eef0fb;border-radius:8px;padding:8px 12px;margin-bottom:8px;flex-wrap:wrap}'
+   +'.trtab{width:100%;border-collapse:collapse;font-size:10px}'
+   +'.trtab th{background:#2A2D8F;color:#fff;padding:5px 3px;font-family:Prompt,sans-serif;font-weight:600;font-size:9px;line-height:1.15;text-align:center}'
+   +'.trtab th.gC{font-size:10px;padding:6px 4px}'
+   +'.trtab td{border:1px solid #e6e8f2;padding:3px 5px;text-align:center}'
+   +'.trtab td.l{text-align:left;font-weight:600;color:#2b2f52;white-space:nowrap}'
+   +'.g1{background:#475569}.g1b{background:#5a6b82}.g2{background:#8338a8}.g2b{background:#9a51b8}.g3{background:#1b6e8a}.hnavy{background:#2A2D8F}.g4{background:#b4234a}.hrk{background:#8a1a38}'
+   +'td.c1{background:#f4f6f9}td.c2{background:#faf3fd;color:#8338a8}td.cmb{background:#eef0fb}td.cport{background:#f3f5fb;font-weight:600}td.cleg{background:#faf0f5;color:#b4234a;font-weight:600}td.crk{background:#fde6ec;color:#b4234a;font-weight:800}'
+   +'td.sepP,th.sepP{border-left:3px solid #8338a8}td.sepM,th.sepM{border-left:3px solid #1b6e8a}td.sepR,th.sepR{border-left:3px solid #b4234a}td.sepC,th.sepC{border-left:3px solid #475569}'
+   +'.trtab tr.tot td{background:#2A2D8F;color:#fff;font-family:Prompt,sans-serif;font-weight:800;border-color:#2A2D8F;font-size:9.5px}.trtab tr.tot td.l{color:#fff}'
+   +'.bOK{color:#15803d}.bGood{color:#2563eb}.bMid{color:#b45309}.bLow{color:#e0483a}'
+   +'.rkH{color:#b4234a}.rkM{color:#d97706}.rkL{color:#15803d}'
+   +'.pill{font-size:7.5px;padding:1px 6px;border-radius:20px;font-weight:600}'
+   +'.pOK{background:#e4fbef;color:#15803d}.pGood{background:#e7effd;color:#2563eb}.pMid{background:#fff4e0;color:#b45309}.pLow{background:#fde8e5;color:#e0483a}'
+   +'.trft{margin-top:7px;font-size:8.5px;color:#8a90a6;text-align:center;border-top:1px solid #e6e8f2;padding-top:7px;line-height:1.6}';
+  var st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
+  var ov=document.createElement('div');ov.id='trOv';
+  ov.innerHTML='<div id="trMd">'
+   +'<div class="trhd"><div class="ic">📊</div><div><div class="t1">ประเมินผลงานรายสาขา · 4 กลุ่มข้อมูล (ผลงาน · ล่วงหน้า · การเก็บเงิน · ความเสี่ยง) · ข้อมูลสดจากระบบ</div><div class="t2">รายงานประเมินสาขาเก็บเอง</div></div>'
+   +'<div class="x" onclick="document.getElementById(\'trOv\').style.display=\'none\'">✕</div></div>'
+   +'<div class="trbd">'
+   +'<div class="trfilt"><span class="lb">🔍 เขต:</span><div class="grp" id="trfz">'
+   +'<button class="trb on" onclick="__trSetZ(0,this)">รวม</button><button class="trb" onclick="__trSetZ(1,this)">เขต 1</button><button class="trb" onclick="__trSetZ(2,this)">เขต 2</button><button class="trb" onclick="__trSetZ(3,this)">เขต 3</button></div>'
+   +'<span class="lb" style="margin-left:12px">🏍️ ประเภท:</span><div class="grp" id="trft">'
+   +'<button class="trb on" onclick="__trSetT(\'all\',this)">รวม</button><button class="trb" onclick="__trSetT(\'new\',this)">รถใหม่</button><button class="trb" onclick="__trSetT(\'used\',this)">รถมือสอง</button></div>'
+   +'<span id="trcount" style="margin-left:auto;font-size:11px;color:#8a90a6"></span>'
+   +'<button class="trb" style="background:#16a34a;color:#fff;border-color:#16a34a" onclick="__trSaveImg()">🖼 บันทึกรูป</button></div>'
+   +'<div class="trsh" id="trsh"></div>'
+   +'<div id="trCard"><table class="trtab"><thead>'
+   +'<tr><th rowspan="2" class="gC">สาขา</th>'
+   +'<th class="gC g1" colspan="3">📋 จำนวนราย (ผลงาน)</th>'
+   +'<th class="gC g2" colspan="3">💜 ชำระล่วงหน้า</th>'
+   +'<th class="gC g3" colspan="3">💰 การเก็บเงิน (รวม)</th>'
+   +'<th class="gC g4" colspan="3">⚖️ ความเสี่ยงพอร์ต</th></tr>'
+   +'<tr><th class="g1 sepC">เป้า</th><th class="g1b">ผลงาน</th><th class="g1b">%ผลงาน</th>'
+   +'<th class="g2 sepP">ล่วงหน้า<br>ตั้งต้น</th><th class="g2b">↩มาจ่าย<br>ซ้ำ</th><th class="g2b">🔇เงียบ</th>'
+   +'<th class="g3 sepM">ยอดต้องเก็บ</th><th class="g3">ยอดเก็บได้</th><th class="hnavy">%เงิน · สถานะ</th>'
+   +'<th class="g4 sepR">พอร์ตรวม<br>(ลบ.)</th><th class="hrk">คาดสูญ<br>(ลบ.)</th><th class="hrk">%คาดสูญ</th></tr>'
+   +'</thead><tbody id="trtb"></tbody></table></div>'
+   +'<div class="trft">โมโต24 · สาขาเก็บเอง (amType=1) · ข้อมูลสดจากระบบ · คาดสูญ = ยอดคงเหลือของรายการในงานทีมกฎหมายของสาขา · พอร์ตรวม = ยอดคงเหลือทุกสัญญาในสาขา · เรียงจาก %ผลงานน้อย→มาก · กรองได้</div>'
+   +'</div></div>';
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.style.display='none';});
+  document.body.appendChild(ov);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){var o=document.getElementById('trOv');if(o&&o.style.display==='block')o.style.display='none';}});
+
+  var TRST={z:0,t:'all'};
+  function _pp2(x){try{return (typeof paidPartial==='function')?paidPartial(x):false;}catch(e){return false;}}
+  function _coll(x){try{return (typeof isCollected==='function')?isCollected(x):(x.paid||x.pd>0||(x.pc===1&&(x.pa>0||x.pn>=1)));}catch(e){return false;}}
+  function _per(){var pr=((typeof SYNC!=='undefined'&&SYNC.period)||'2569-10').split('-');return (parseInt(pr[0])-543)*100+parseInt(pr[1]);}
+  function _pmYM(s){s=String(s||'');var p=s.split('/');if(p.length<3)return 0;var y=parseInt(p[2]);if(y>2400)y-=543;return y*100+parseInt(p[1]);}
+  function _isPre(x){var base=(x.pc===1&&x.pd<1&&((x.pa>0)||(x.pn>=1))&&!_pp2(x));return (base&&x.preOverride!=='out')||x.preOverride==='in';}
+  function _bmeta(code){var d=(typeof DATA!=='undefined')?DATA.find(function(z){return z.code===code;}):null;return d||{name:code,zone:0,type:'used'};}
+  function fmtN(n){try{return fmt(Math.round(n));}catch(e){return Math.round(n||0).toLocaleString();}}
+  function mb(n){return (n/1e6).toFixed(2);}
+  function band(p){if(p>=90)return['ดีมาก','pOK','bOK'];if(p>=85)return['ดี','pGood','bGood'];if(p>=80)return['เฝ้าระวัง','pMid','bMid'];return['เร่งด่วน','pLow','bLow'];}
+  function rkCls(p){return p>=25?'rkH':(p>=15?'rkM':'rkL');}
+
+  function build(){
+    var codes=(typeof VBC==='function')?VBC():((typeof DATA!=='undefined')?DATA.map(function(b){return b.code;}):[]);
+    var al={};codes.forEach(function(c){al[c]=1;});
+    var PER=_per(),B={};
+    CUST.forEach(function(x){
+      if(!al[x.s])return;
+      if(!B[x.s]){var m=_bmeta(x.s);B[x.s]={c:x.s,nm:m.name||x.s,z:m.zone||0,tp:(m.type||'used'),
+        tgt:0,done:0,pre:0,rep:0,due:0,col:0,tot:0,leg:0};}
+      var o=B[x.s];
+      o.tot+=(+x.bal||0);
+      if(String(x.amType)==='3')o.leg+=(+x.bal||0);
+      if(String(x.amType)==='1'){
+        o.tgt++; var c=_coll(x);
+        if(c)o.done++;
+        o.due+=(+x.f||0);
+        if(c)o.col+=((x.pl>0)?(+x.pl):(+x.f||0));
+        if(_isPre(x)){o.pre++; if(_pmYM(x.pdate)===PER)o.rep++;}
+      }
+    });
+    return Object.keys(B).map(function(k){return B[k];});
+  }
+  function filt(rows){return rows.filter(function(r){return (TRST.z===0||r.z===TRST.z)&&(TRST.t==='all'||r.tp===TRST.t);});}
+
+  window.__trRender=function(){
+    var rows=filt(build());
+    rows.forEach(function(r){r._wp=r.tgt?100*r.done/r.tgt:0;r._mp=r.due?100*r.col/r.due:0;r._rk=r.tot?100*r.leg/r.tot:0;});
+    rows.sort(function(a,b){return a._wp-b._wp;});
+    var T={tgt:0,done:0,pre:0,rep:0,due:0,col:0,tot:0,leg:0},h='';
+    rows.forEach(function(r){
+      ['tgt','done','pre','rep','due','col','tot','leg'].forEach(function(k){T[k]+=r[k];});
+      var sil=r.pre-r.rep, bd=band(r._mp);
+      h+='<tr><td class="l">'+r.nm+'</td>'
+        +'<td class="c1 sepC">'+fmtN(r.tgt)+'</td><td class="c1">'+fmtN(r.done)+'</td><td class="c1"><b class="'+bandWp(r._wp)+'">'+r._wp.toFixed(2)+'%</b></td>'
+        +'<td class="c2 sepP">'+fmtN(r.pre)+'</td><td class="c2"><b>'+fmtN(r.rep)+'</b></td><td class="c2" style="background:#fff7ea;color:#b45309">'+fmtN(sil)+'</td>'
+        +'<td class="cmb sepM">'+fmtN(r.due)+'</td><td class="cmb">'+fmtN(r.col)+'</td>'
+        +'<td class="cmb"><b class="'+bd[2]+'">'+r._mp.toFixed(2)+'%</b> <span class="pill '+bd[1]+'">'+bd[0]+'</span></td>'
+        +'<td class="cport sepR">'+mb(r.tot)+'</td><td class="cleg">'+mb(r.leg)+'</td><td class="crk"><b class="'+rkCls(r._rk)+'">'+r._rk.toFixed(2)+'%</b></td></tr>';
+    });
+    var twp=T.tgt?100*T.done/T.tgt:0,tmp=T.due?100*T.col/T.due:0,trk=T.tot?100*T.leg/T.tot:0,tbd=band(tmp);
+    h+='<tr class="tot"><td class="l">รวม ('+rows.length+' สาขา)</td>'
+      +'<td class="sepC">'+fmtN(T.tgt)+'</td><td>'+fmtN(T.done)+'</td><td>'+twp.toFixed(2)+'%</td>'
+      +'<td class="sepP">'+fmtN(T.pre)+'</td><td>'+fmtN(T.rep)+'</td><td>'+fmtN(T.pre-T.rep)+'</td>'
+      +'<td class="sepM">'+fmtN(T.due)+'</td><td>'+fmtN(T.col)+'</td><td>'+tmp.toFixed(2)+'% · '+tbd[0]+'</td>'
+      +'<td class="sepR">'+mb(T.tot)+'</td><td>'+mb(T.leg)+'</td><td>'+trk.toFixed(2)+'%</td></tr>';
+    document.getElementById('trtb').innerHTML=h;
+    document.getElementById('trsh').innerHTML='🏢 <b>สาขาเก็บเอง</b> · ผลงาน '+fmtN(T.done)+'/'+fmtN(T.tgt)+' (<b>'+twp.toFixed(2)+'%</b>) · ล่วงหน้า '+fmtN(T.pre)+' → มาจ่ายซ้ำ '+fmtN(T.rep)+' · เก็บเงิน '+mb(T.col)+'/'+mb(T.due)+' ลบ ('+tmp.toFixed(2)+'%) · พอร์ตรวม '+mb(T.tot)+' ลบ · ⚖️ คาดสูญ '+mb(T.leg)+' ลบ = <b style="color:#ffd1cc">'+trk.toFixed(2)+'%</b>';
+    document.getElementById('trcount').textContent='แสดง '+rows.length+' สาขา';
+  };
+  function bandWp(p){if(p>=90)return 'bOK';if(p>=85)return 'bGood';if(p>=80)return 'bMid';return 'bLow';}
+  window.__trSetZ=function(z,el){TRST.z=z;var g=document.querySelectorAll('#trfz .trb');for(var i=0;i<g.length;i++)g[i].classList.remove('on');el.classList.add('on');window.__trRender();};
+  window.__trSetT=function(t,el){TRST.t=t;var g=document.querySelectorAll('#trft .trb');for(var i=0;i<g.length;i++)g[i].classList.remove('on');el.classList.add('on');window.__trRender();};
+  window.__trSaveImg=function(){var el=document.getElementById('trCard');if(!el)return;if(typeof html2canvas==='undefined'){if(typeof toast==='function')toast('บันทึกรูปต้องออนไลน์ · ลองแคปหน้าจอแทน');return;}if(typeof toast==='function')toast('กำลังสร้างรูป…');var tag=TRST.z===0?'ทุกเขต':'เขต'+TRST.z;if(TRST.t!=='all')tag+='_'+(TRST.t==='new'?'รถใหม่':'รถมือสอง');html2canvas(el,{scale:2,backgroundColor:'#ffffff'}).then(function(c){var a=document.createElement('a');a.download='ประเมินสาขาเก็บเอง_'+tag+'.png';a.href=c.toDataURL('image/png');a.click();}).catch(function(){if(typeof toast==='function')toast('บันทึกไม่สำเร็จ');});};
+  window.openTeamReport=function(){
+    if(typeof CUST==='undefined'||!CUST.length){if(typeof toast==='function')toast('ยังไม่มีข้อมูล · กรุณาเข้าสู่ระบบก่อน');return;}
+    TRST={z:0,t:'all'};
+    var fz=document.querySelectorAll('#trfz .trb');for(var i=0;i<fz.length;i++)fz[i].classList.toggle('on',i===0);
+    var ft=document.querySelectorAll('#trft .trb');for(var j=0;j<ft.length;j++)ft[j].classList.toggle('on',j===0);
+    document.getElementById('trOv').style.display='block';
+    window.__trRender();
+  };
+  var btn=document.createElement('button');
+  btn.className='fab';btn.setAttribute('onclick','openTeamReport()');
+  btn.title='รายงานประเมินสาขาเก็บเอง';
+  btn.style.cssText='bottom:444px;width:210px;justify-content:center;background:#0f766e;box-shadow:0 4px 16px rgba(15,118,110,.42)';
+  btn.innerHTML='📊 ประเมินสาขาเก็บเอง';
+  document.body.appendChild(btn);
+})();
+</script>
 </body></html>
