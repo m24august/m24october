@@ -3857,11 +3857,29 @@ setupLogin();
    เปลี่ยนเฉพาะเคส (จ่ายเดือนนี้ + มีงวดใหม่ถึงดิว) เท่านั้น เคสอื่นผลลัพธ์เท่าเดิมทุกกรณี */
 (function(){
   if(typeof liveBucket!=='function'||typeof _mDue!=='function'||typeof isCollected!=='function'||typeof REMOVE_SET==='undefined')return;
+  /* หยุดไหล ณ สิ้นเดือน: อ้างอิงเวลาไม่เกินวันสุดท้ายของเดือน period
+     - ระหว่างเดือน: ref = วันนี้ (ไหลสดเหมือนเดิม ไม่เปลี่ยนอะไร)
+     - ข้ามเดือนแล้ว: ref = วันสุดท้ายของเดือน → งวดค้างล็อกที่ค่าสิ้นเดือน ไม่ไหลต่อ */
+  function _flowRef(){
+    var now=new Date();
+    try{
+      var pr=((typeof SYNC!=='undefined'&&SYNC.period)||'').split('-');
+      if(pr.length===2){var y=parseInt(pr[0]);if(y>2500)y-=543;var m=parseInt(pr[1]);
+        if(y&&m){var me=new Date(y,m,0,23,59,59);return now<me?now:me;}}
+    }catch(e){}
+    return now;
+  }
+  function _mDueF(x){
+    var du=(typeof _pDate==='function')?_pDate(x.du):null;
+    if(!du)return (typeof _mDue==='function')?_mDue(x):0;
+    var r=_flowRef();
+    return (r.getFullYear()-du.getFullYear())*12+(r.getMonth()-du.getMonth())+(r.getDate()>=du.getDate()?1:0);
+  }
   liveBucket=function(x){
     var st=x.statusTag;if(st&&(REMOVE_SET[st]||st==='ปิดบัญชี'))return -1;
     var b=Math.min(7,x.b||0);
-    var nd=(_mDue(x)>b)?b+1:b;        // งวดใหม่ถึงดิวในเดือนนี้ => +1 (cap ที่ +1 ต่อเดือน เท่าเดิม)
-    if(isCollected(x))return Math.min(7,Math.max(0,nd-1)); // หักงวดที่จ่าย -1 จากฐานที่รวมงวดใหม่แล้ว
+    var nd=(_mDueF(x)>b)?b+1:b;        // งวดใหม่ถึงดิว (cap เวลาไม่เกินสิ้นเดือน) => +1
+    if(isCollected(x))return Math.min(7,Math.max(0,nd-1)); // หักงวดที่จ่าย -1
     return Math.min(7,nd);
   };
 })();
